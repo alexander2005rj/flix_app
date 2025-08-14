@@ -1,4 +1,3 @@
 venv
-db.sqlite3
-media
-compose.yaml
+*.sqlite3
+__pycache__

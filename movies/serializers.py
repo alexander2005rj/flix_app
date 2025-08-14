@@ -1,42 +1,45 @@
 from django.db.models import Avg
 from rest_framework import serializers
+from genres.serializers import GenreSerializer
+from actors.serializers import ActorSerializer
 from movies.models import Movie
-    
+
 
 class MovieSerializer(serializers.ModelSerializer):
-    """
-    Criando um campo calculado somente leitura (SerializerMethodField) de média de estrelas
-    """
+
+    class Meta:
+        model = Movie
+        fields = '__all__'
+
+    def validate_release_date(self, value):
+        if value.year < 1900:
+            raise serializers.ValidationError('A data de lançamento não pode ser anterior a 1900.')
+            return value
+
+    def validate_resume(self, value):
+        if len(value) > 500:
+            raise serializers.ValidationError('Resumo não deve passar de 500 caracteres.')
+
+
+class MovieListDetailSerializer(serializers.ModelSerializer):
+    actors = ActorSerializer(many=True)
+    genre = GenreSerializer()
     rate = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
-       model = Movie
-       fields = '__all__'
+        model = Movie
+        fields = ['id', 'title', 'genre', 'actors', 'release_date', 'rate', 'resume']
 
-    """
-    Criando um método para retornar a média de estrelas
-    Método sempre começa com get_<nome_campo>
-    """
     def get_rate(self, obj):
         rate = obj.reviews.aggregate(Avg('stars'))['stars__avg']
-        
         if rate:
             return round(rate, 1)
 
         return None
 
-    """
-    Criando uma função de validação de Release Date
-    Método sempre começa com validate_<nome_campo>
-    """
-    def validate_release_date(self, value):
-       if value.year < 1900:
-           raise serializers.ValidationError('A data de lançamento não pode ser anterior a 1900.')
-       return value
-    
-    """
-    Criando uma função para validar o tamanho do campo Resume
-    """
-    def validate_resume(self, value):
-        if len(value) > 500:
-            raise serializers.ValidationError('Resumo não deve passar de 500 caracteres.')
+
+class MovieStatusSerializer(serializers.Serializer):
+    total_movies = serializers.IntegerField()
+    movies_by_genre = serializers.ListField()
+    total_reviews = serializers.IntegerField()
+    average_stars = serializers.FloatField()
